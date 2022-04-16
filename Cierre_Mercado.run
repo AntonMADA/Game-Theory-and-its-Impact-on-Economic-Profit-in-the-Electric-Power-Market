@@ -1,0 +1,96 @@
+reset;
+
+model Cierre_Mercado.mod;
+
+printf "\n-Modelo de cierre de mercado-\n";
+#printf "\n-Lectura de datos en Excel-\n";
+
+#Lee datos generales (Nodos y líneas)
+table DatosGenerales IN "ODBC" "DATA30.xlsx" "DatosGenerales":
+[],Nnodos, Nlines, Npor;
+read table DatosGenerales;
+
+#Lee datos de costos de cada generador
+table CO IN "ODBC" "DATA30.xlsx" "CO":
+[i~Nnodos],{j in 1..3} < CO[i,j] ~ (j)>;
+read table CO;
+
+#Lee la matriz Ybus
+table B IN "ODBC" "DATA30.xlsx" "B":
+[i~Nnodos],{j in 1..Nnodos} < B[i,j] ~ (j)>;
+read table B;
+
+#Lee datos de potencia min/max de cada generador en cada nodo
+table Pg IN "ODBC" "DATA30.xlsx" "Pg":
+[i~Nnodos],{j in 1..2} < Pg[i,j] ~ (j)>;
+read table Pg;
+
+#Lee datos de potencia demandada en cada nodo
+table Pd IN "ODBC" "DATA30.xlsx" "Pd":
+[Nnodos], Pd;
+read table Pd;
+
+#Lee datos de flujo min/max de cada linea
+table FL IN "ODBC" "DATA30.xlsx" "FL":
+[i~Nlines],{j in 1..2} < FL[i,j] ~ (j)>;
+read table FL;
+
+#Lee datos de direccion de cada linea
+table D IN "ODBC" "DATA30.xlsx" "D":
+[i~Nlines],{j in 1..3} < D[i,j] ~ (j)>;
+read table D;
+
+table KO IN "ODBC" "DATA30.xlsx" "KO":
+[i~Npor],{j in 1..Nnodos} < KO[i,j] ~ (j)>;
+read table KO;
+
+#printf "\n-Fin de lectura de datos de Excel-\n";
+
+for{i in 1..21 by 1}
+{
+	printf "\n-con un porcentaje de- %d\n",i;
+	for{j in 1..Nnodos by 1}
+	{
+		let K[j]:=KO[i,j];
+	}
+	solve;
+	expand f;
+	for{k in 1..Nnodos by 1}
+	{
+		let PML[i,k]:=R1.dual[k];
+		let Pot[i,k]:=P[k];
+	}
+	for{l in 1..Nlines by 1}
+	{
+		let Flujo[i,l]:=F[l];
+		
+	}
+}
+
+printf "\n-Resultados de Cierre de mercado en Excel-\n";
+
+#IMPRESION DE RESULTADOS EN UN ARCHIVO DE EXCEL POR ESCENARIO
+#table RPOT OUT "ODBC" "DATA.xlsx" "RPOT":
+#[POTENCIA], P;
+#write table RPOT;
+
+#table RPML OUT "ODBC" "DATA.xlsx" "RPML":
+#[PML], R1.dual;
+#write table RPML;
+
+#table RFL OUT "ODBC" "DATA.xlsx" "RFL":
+#[FLUJOS], F;
+#write table RFL;	
+
+table RESPML OUT "ODBC" "DATA30.xlsx" "RESPML":
+[Nodo],{k in 1..21} <{i in 1..Nnodos} PML[k,i] ~ ("% " & k-1)>;
+write table RESPML;
+
+table RESPOT OUT "ODBC" "DATA30.xlsx" "RESPOT":
+[Nodo],{k in 1..21} <{i in 1..Nnodos} Pot[k,i] ~ ("% " & k-1)>;
+write table RESPOT;
+
+table RESFLUJO OUT "ODBC" "DATA30.xlsx" "RESFLUJO":
+[Linea],{l in 1..21} <{i in 1..Nlines} Flujo[l,i] ~ ("% " & l-1)>;
+write table RESFLUJO;	
+printf "\n-Programa Terminado-\n";
